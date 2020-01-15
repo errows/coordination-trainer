@@ -100,82 +100,29 @@ struct PlayerView: UIViewRepresentable {
 }
 
 // This is the SwiftUI view that contains the controls for the player
-struct PlayerControlsView : View {
-    @Binding private(set) var videoPos: Double
-    @Binding private(set) var videoDuration: Double
-    @Binding private(set) var seeking: Bool
-    
+struct PlayButton : View {
+    @State private var isPressed = false
     let player: AVPlayer
-        
-    enum DragState {
-        case inactive
-        case pressing
-        case dragging
-        var isActive: Bool {
-            switch self {
-            case .inactive:
-                return false
-            case .pressing, .dragging:
-                return true
-            }
-        }
-        var isDragging: Bool {
-            switch self {
-            case .inactive, .pressing:
-                return false
-            case .dragging:
-                return true
-            }
-        }
-        
-    }
-
-    @GestureState var dragState = DragState.inactive
-
+    
     var body: some View {
-        let minimumLongPressDuration = 2.0
-        let press = LongPressGesture(minimumDuration: minimumLongPressDuration)
-        .sequenced(before: DragGesture())
-        .onEnded { value in
-            print("oh marvelosa \(value)")
-            guard case .second(true, nil) = value else {
-                print("oh banana")
-                return
-            }
-            print("oh mamamia")
-        }
-        .updating($dragState) { value, state, transaction in
-            print(value)
-            print(state)
-            switch value {
-            // Long press begins.
-            case .first(true):
-                state = .pressing
-            // Long press confirmed, dragging may begin.
-            case .second(true, _):
-                state = .dragging
-                self.player.play()
-            // Dragging ended or the long press cancelled.
-            default:
-                print("oh la la")
-                state = .inactive
-                self.player.pause()
-                
-                
-            }
+        let dragGesture = DragGesture(minimumDistance: 0.0).onChanged { _ in
+            self.isPressed = true
+            print("touch")
+            self.player.play()
+        }.onEnded {  _ in
+            self.isPressed = false
+            print("release")
+            self.player.pause()
         }
         return Circle()
-            .fill(dragState.isDragging ? Color.pink : Color.purple)
-            .overlay(dragState.isDragging ? Circle().stroke(Color.white, lineWidth: 2) : nil)
+            .fill(isPressed ? Color.pink : Color.purple)
+            .overlay(isPressed ? Circle().stroke(Color.white, lineWidth: 2) : nil)
             .frame(width: 100, height: 100, alignment: .center)
             .animation(nil)
-            .shadow(radius: dragState.isActive ? 8 : 0)
-            .animation(.linear(duration: minimumLongPressDuration))
-            .gesture(press)
+            .shadow(radius: isPressed ? 8 : 0)
+            .animation(.linear(duration: 0.2))
+            .gesture(dragGesture)
     }
-    
-
-        
 }
 
 // This is the SwiftUI view which contains the player and its controls
@@ -196,7 +143,7 @@ struct PlayerContainerView : View {
     var body: some View {
         VStack {
             PlayerView(videoPos: $videoPos, videoDuration: $videoDuration, seeking: $seeking, player: player).frame(height:300)
-            PlayerControlsView(videoPos: $videoPos, videoDuration: $videoDuration, seeking: $seeking, player: player)
+            PlayButton(player: player)
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
     }
